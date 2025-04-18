@@ -1,0 +1,17 @@
+{
+  "name": "hm-pdf-sender",
+  "version": "1.0.0",
+  "description": "Backend para enviar PDFs personalizados con Gmail desde HM Encuadernaciones",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "nodemailer": "^6.9.3",
+    "pdf-lib": "^1.17.1"
+  }
+}
