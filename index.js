@@ -1,32 +1,85 @@
-
 import express from 'express';
 import nodemailer from 'nodemailer';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { readFile } from 'fs/promises';
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, StandardFonts } from 'pdf-lib';
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Función para dividir texto en líneas
+function dividirTextoEnLineas(texto, maxCaracteresPorLinea = 70) {
+  const palabras = texto.split(' ');
+  const lineas = [];
+  let lineaActual = '';
+
+  for (const palabra of palabras) {
+    if ((lineaActual + ' ' + palabra).trim().length <= maxCaracteresPorLinea) {
+      lineaActual += ' ' + palabra;
+    } else {
+      lineas.push(lineaActual.trim());
+      lineaActual = palabra;
+    }
+  }
+  if (lineaActual.trim() !== '') {
+    lineas.push(lineaActual.trim());
+  }
+
+  return lineas;
+}
+
 app.post('/enviar-pdf', async (req, res) => {
   const { nombre, pedido, fechaEntrega, notas, correo } = req.body;
 
   try {
-    const pdfBytes = await readFile('./plantilla.pdf');
+    const pdfBytes = await readFile('./plantilla_zona_correcta_final_v14.pdf');
     const pdfDoc = await PDFDocument.load(pdfBytes);
-    const form = pdfDoc.getForm();
+    const page = pdfDoc.getPages()[0];
 
-    form.getTextField('Pedido').setText(pedido);
-    form.getTextField('Fecha de entrega').setText(fechaEntrega);
-    form.getTextField('Notas').setText(notas);
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const bold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
 
-    form.flatten(); // Hace que el texto quede fijo en el PDF
+    const size = 11;
+    const lineHeight = 18;
 
-    const filledPdfBytes = await pdfDoc.save();
+    // Coordenadas base
+    const xEtiqueta = 70;
+    const xTexto = 190;
+    const xTextoFecha = 250;
 
+    let yBase = 480;
+
+    const notasLineas = dividirTextoEnLineas(notas);
+    const yNotas = yBase;
+    const yFecha = yNotas - (notasLineas.length * lineHeight + 15);
+    const fechaLineas = dividirTextoEnLineas(fechaEntrega);
+    const yPedido = yFecha - (fechaLineas.length * lineHeight + 15);
+    const pedidoLineas = dividirTextoEnLineas(pedido);
+
+    // Dibujar etiquetas
+    page.drawText('Notas:', { x: xEtiqueta, y: yNotas, size, font: bold });
+    page.drawText('Fecha de entrega:', { x: xEtiqueta, y: yFecha, size, font: bold });
+    page.drawText('Pedido:', { x: xEtiqueta, y: yPedido, size, font: bold });
+
+    // Dibujar contenido multilínea
+    notasLineas.forEach((linea, i) => {
+      page.drawText(linea, { x: xTexto, y: yNotas - i * lineHeight, size, font });
+    });
+
+    fechaLineas.forEach((linea, i) => {
+      page.drawText(linea, { x: xTextoFecha, y: yFecha - i * lineHeight, size, font });
+    });
+
+    pedidoLineas.forEach((linea, i) => {
+      page.drawText(linea, { x: xTexto, y: yPedido - i * lineHeight, size, font });
+    });
+
+    const pdfFinal = await pdfDoc.save();
+
+    // Configurar transporte
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -39,13 +92,11 @@ app.post('/enviar-pdf', async (req, res) => {
       from: `"HM Encuadernaciones" <${process.env.EMAIL_USER}>`,
       to: correo,
       subject: 'Actualización de su pedido | HM Encuadernaciones',
-      text: `Estimado(a) ${nombre},
-
-Adjunto encontrará la actualización de su pedido.`,
+      text: `Estimado(a) ${nombre}, adjuntamos la actualización de su pedido.`,
       attachments: [
         {
           filename: 'actualizacion_pedido.pdf',
-          content: Buffer.from(filledPdfBytes),
+          content: Buffer.from(pdfFinal),
           contentType: 'application/pdf'
         }
       ]
@@ -53,11 +104,11 @@ Adjunto encontrará la actualización de su pedido.`,
 
     res.status(200).json({ success: true, message: 'Correo enviado exitosamente.' });
 
-  } catch (error) {
-    console.error('Error al enviar el PDF:', error);
-    res.status(500).json({ success: false, message: 'Hubo un error al enviar el PDF.' });
+  } catch (err) {
+    console.error('❌ Error al enviar el PDF:', err);
+    res.status(500).json({ success: false, message: 'Error al generar o enviar el PDF.' });
   }
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor backend iniciado en puerto ${PORT}`));
+app.listen(PORT, () => console.log(`📦 Servidor escuchando en el puerto ${PORT}`));
