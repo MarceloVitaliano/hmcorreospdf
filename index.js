@@ -3,7 +3,7 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { readFile, writeFile } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { PDFDocument } from 'pdf-lib';
 
 dotenv.config();
@@ -23,7 +23,7 @@ app.post('/enviar-pdf', async (req, res) => {
     form.getTextField('Fecha de entrega').setText(fechaEntrega);
     form.getTextField('Notas').setText(notas);
 
-    form.flatten(); // Opcional: convierte los campos en texto fijo
+    form.flatten(); // Hace que el texto quede fijo en el PDF
 
     const filledPdfBytes = await pdfDoc.save();
 
