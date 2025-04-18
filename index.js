@@ -3,8 +3,8 @@ import express from 'express';
 import nodemailer from 'nodemailer';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { readFile } from 'fs/promises';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { readFile, writeFile } from 'fs/promises';
+import { PDFDocument } from 'pdf-lib';
 
 dotenv.config();
 const app = express();
@@ -15,21 +15,17 @@ app.post('/enviar-pdf', async (req, res) => {
   const { nombre, pedido, fechaEntrega, notas, correo } = req.body;
 
   try {
-    const existingPdfBytes = await readFile('./plantilla.pdf');
-    const pdfDoc = await PDFDocument.load(existingPdfBytes);
-    const pages = pdfDoc.getPages();
-    const firstPage = pages[0];
+    const pdfBytes = await readFile('./plantilla.pdf');
+    const pdfDoc = await PDFDocument.load(pdfBytes);
+    const form = pdfDoc.getForm();
 
-    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-    const fontSize = 12;
-    const color = rgb(0, 0, 0);
+    form.getTextField('Pedido').setText(pedido);
+    form.getTextField('Fecha de entrega').setText(fechaEntrega);
+    form.getTextField('Notas').setText(notas);
 
-    // Coordenadas ajustadas según revisión visual
-    firstPage.drawText(pedido, { x: 130, y: 675, size: fontSize, font, color });
-    firstPage.drawText(fechaEntrega, { x: 130, y: 635, size: fontSize, font, color });
-    firstPage.drawText(notas, { x: 130, y: 595, size: fontSize, font, color, maxWidth: 350 });
+    form.flatten(); // Opcional: convierte los campos en texto fijo
 
-    const pdfBytes = await pdfDoc.save();
+    const filledPdfBytes = await pdfDoc.save();
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -49,7 +45,7 @@ Adjunto encontrará la actualización de su pedido.`,
       attachments: [
         {
           filename: 'actualizacion_pedido.pdf',
-          content: Buffer.from(pdfBytes),
+          content: Buffer.from(filledPdfBytes),
           contentType: 'application/pdf'
         }
       ]
