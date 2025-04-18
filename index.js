@@ -22,11 +22,12 @@ app.post('/enviar-pdf', async (req, res) => {
 
     const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
     const fontSize = 12;
+    const color = rgb(0, 0, 0);
 
-    // Posiciones X, Y exactas en la plantilla para cada campo
-    firstPage.drawText(pedido, { x: 105, y: 490, size: fontSize, font, color: rgb(0, 0, 0) });
-    firstPage.drawText(fechaEntrega, { x: 105, y: 460, size: fontSize, font, color: rgb(0, 0, 0) });
-    firstPage.drawText(notas, { x: 105, y: 430, size: fontSize, font, color: rgb(0, 0, 0), maxWidth: 400 });
+    // Coordenadas ajustadas según revisión visual
+    firstPage.drawText(pedido, { x: 130, y: 675, size: fontSize, font, color });
+    firstPage.drawText(fechaEntrega, { x: 130, y: 635, size: fontSize, font, color });
+    firstPage.drawText(notas, { x: 130, y: 595, size: fontSize, font, color, maxWidth: 350 });
 
     const pdfBytes = await pdfDoc.save();
 
@@ -39,7 +40,7 @@ app.post('/enviar-pdf', async (req, res) => {
     });
 
     await transporter.sendMail({
-      from: '"HM Encuadernaciones" <' + process.env.EMAIL_USER + '>',
+      from: `"HM Encuadernaciones" <${process.env.EMAIL_USER}>`,
       to: correo,
       subject: 'Actualización de su pedido | HM Encuadernaciones',
       text: `Estimado(a) ${nombre},
