@@ -35,7 +35,7 @@ app.post('/enviar-pdf', async (req, res) => {
   const { nombre, pedido, fechaEntrega, notas, correo } = req.body;
 
   try {
-    const pdfBytes = await readFile('./plantilla_zona_correcta_final_v14.pdf');
+const pdfBytes = await readFile('./plantilla_zona_correcta_final_v14_REAL.pdf');
     const pdfDoc = await PDFDocument.load(pdfBytes);
     const page = pdfDoc.getPages()[0];
 
